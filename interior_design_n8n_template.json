@@ -1,0 +1,305 @@
+{
+  "name": "Interior Design Lead Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "interia-lead-webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1560, 260],
+      "id": "88376818-87d8-490b-96c7-2f3536dfb4da",
+      "name": "Webhook",
+      "webhookId": "interia-lead-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "event-check",
+              "leftValue": "={{ $json.body.message.type }}",
+              "rightValue": "end-of-call-report",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1360, 260],
+      "id": "7b313d02-bc36-4b3a-99aa-2bb2e7cc3cb4",
+      "name": "Event = end-of-call-report"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": { "__rl": true, "value": "appi8o2urjTtctZ5S", "mode": "list", "cachedResultName": "Outbound System" },
+        "table": { "__rl": true, "value": "tbleTZTXCgR1hNK3g", "mode": "list", "cachedResultName": "Data" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.body.message.call.id }}",
+            "callproviderID": "={{ $json.body.message.call.phoneCallProviderId }}",
+            "phonenumberID": "={{ $json.body.message.call.phoneNumberId }}",
+            "customernumber": "={{ $json.body.message.call.customer.number }}",
+            "type": "={{ $json.body.message.call.type }}",
+            "started": "={{ $json.body.message.startedAt }}",
+            "ended": "={{ $json.body.message.endedAt }}",
+            "milliseconds": "={{ $json.body.message.durationMs }}",
+            "cost(total)": "={{ $json.body.message.costBreakdown.total }}",
+            "ended reason": "={{ $json.body.message.endedReason }}",
+            "transcript": "={{ $json.body.message.transcript }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-1160, 260],
+      "id": "4e47a89d-9512-4778-b528-7f26e14a929d",
+      "name": "Log Call Record",
+      "credentials": { "airtableTokenApi": { "id": "R8VJXNUf6M3mSRDd", "name": "Airtable Personal Access Token account" } }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": { "__rl": true, "value": "appi8o2urjTtctZ5S", "mode": "list", "cachedResultName": "Outbound System" },
+        "table": { "__rl": true, "value": "tblIaRaDlT6gGW1JM", "mode": "list", "cachedResultName": "Leads" },
+        "filterByFormula": "=({Mobile} = '{{ $json.body.message.call.customer.number }}')",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-940, 260],
+      "id": "9326690e-f37e-48a7-a311-f3067fdf4947",
+      "name": "Get Lead ID",
+      "credentials": { "airtableTokenApi": { "id": "R8VJXNUf6M3mSRDd", "name": "Airtable Personal Access Token account" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "answered-check",
+              "leftValue": "={{ $json.body.message.endedReason }}",
+              "rightValue": "customer-did-not-answer",
+              "operator": { "type": "string", "operation": "notEquals" }
+            },
+            {
+              "id": "voicemail-check",
+              "leftValue": "={{ $json.body.message.analysis.summary }}",
+              "rightValue": "voicemail",
+              "operator": { "type": "string", "operation": "notContains" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-740, 260],
+      "id": "b6a25f77-b878-4b72-8f9e-4b0f7460857b",
+      "name": "Condition = Answered"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appi8o2urjTtctZ5S", "mode": "list", "cachedResultName": "Outbound System" },
+        "table": { "__rl": true, "value": "tblIaRaDlT6gGW1JM", "mode": "list", "cachedResultName": "Leads" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Status": "Called",
+            "Attempt": "Success",
+            "Summary": "={{ $json.body.message.analysis.summary }}",
+            "Date Time": "={{ $now }}"
+          },
+          "matchingColumns": ["id"]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-520, 120],
+      "id": "00e2fde0-ab45-45e2-a062-1dcee989b638",
+      "name": "Mark as Called",
+      "credentials": { "airtableTokenApi": { "id": "R8VJXNUf6M3mSRDd", "name": "Airtable Personal Access Token account" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "unanswered-check",
+              "leftValue": "={{ $json.body.message.endedReason }}",
+              "rightValue": "customer-did-not-answer",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-740, 460],
+      "id": "1e38389c-2049-4816-b424-3da9ecf60618",
+      "name": "Condition = Unanswered"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "attempt-check",
+              "leftValue": "={{ $json.Attempt }}",
+              "rightValue": "1",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-520, 460],
+      "id": "6efb0f5c-853e-409c-86f2-c2ba8e1363b4",
+      "name": "First Attempt"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appi8o2urjTtctZ5S", "mode": "list", "cachedResultName": "Outbound System" },
+        "table": { "__rl": true, "value": "tblIaRaDlT6gGW1JM", "mode": "list", "cachedResultName": "Leads" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Status": "In-Progress",
+            "Attempt": "1",
+            "Summary": "First attempt failed - retrying",
+            "Date Time": "={{ $now }}"
+          },
+          "matchingColumns": ["id"]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-340, 360],
+      "id": "d0fdf273-c764-4c96-9f07-03c939533605",
+      "name": "Mark First Attempt",
+      "credentials": { "airtableTokenApi": { "id": "R8VJXNUf6M3mSRDd", "name": "Airtable Personal Access Token account" } }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-340, 560],
+      "id": "2b33627e-b194-402f-b813-2331e541f3fb",
+      "name": "Wait 1 Minute",
+      "webhookId": "retry-webhook-id"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.vapi.ai/call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer cb10042c-e626-462a-9804-fd2a10f1c4e4" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"assistantId\": \"b4d31f49-eec6-4a7f-818b-918625957ba1\",\n  \"customer\": {\n    \"name\": \"{{ $json.fields['First Name'] }}\",\n    \"number\": \"{{ $json.fields.Mobile }}\"\n  },\n  \"phoneNumberId\": \"8b6a043f-f584-48af-8a67-c4489f24f434\",\n  \"assistant\": {\n    \"prompt\": {\n      \"role\": \"system\",\n      \"message\": \"# Role\\nYou are Alex, an expert booking assistant and sales agent for Interia, an interior design company.\\n\\n# Task\\n\\n## Introduce the call\\n- Tell the user you\\'re Alex calling from Interia, reaching out following their recent interest in interior design services.\\n\\n## Qualify the lead\\n- Ask why they were interested in reaching out about interior design services.\\nWait for response\\n- Ask how many rooms or spaces they are planning to redesign.\\nWait for response\\n- Ask what specific services they are after, for example, full home design, room makeover, or consultation.\\nWait for response\\n- Ask their budget.\\nWait for response, if budget < $5,000 do not offer booking an appointment. If budget > $5,000 offer scheduling an appointment to move forward.\\n\\n## Book appointment\\nWork with the caller to book an appointment into Interia’s calendar.\\n- Ask the user what time they prefer to book an appointment.\\n- Use the \\'checkCalendarN8N\\' function to look for availability first.\\nWait for API response\\n- Use the \\'bookCalendarN8N\\' function to finalize booking.\\nIf booking successful, say \\\"Thank you for booking with us, you should receive an SMS with the details and meeting link shortly\\\".\\n\\n## Closing call\\nOnce the user has been booked in or they want to finish the call:\\n- Use the \\'endCall\\' function.\\n\\n# Specifics\\n- Always get the availabilities first before booking.\\n- Use the current time as a reference for checking slots.\\n- Never assume a day or slot is available, always check using the function call.\\n- If a requested slot isn’t available, and there are available times the following day, explicitly say this.\\n\\n# Context\\nYou work at Interia, a premier interior design company. You are qualifying leads via an outbound phone call who have inquired about your services. Our business hours are 9 AM to 5 PM, Monday to Friday. You are in a voice conversation.\\n\\n# Current Time\\nCurrent time: April 06, 2025, 10:00 AM\\n\\n# Notes\\n- Always steer the conversation back on track using the task and role.\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-140, 560],
+      "id": "0b394140-0cb4-4295-b898-075232425f25",
+      "name": "Retry Call",
+      "notes": "Agent Purpose: Alex qualifies leads for Interia by introducing the call, asking about interest, room count, service type, and budget. If budget > $5,000, books an appointment using Vapi functions (checkCalendarN8N, bookCalendarN8N), then closes the call with endCall. Updates Airtable with outcomes."
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": { "__rl": true, "value": "appi8o2urjTtctZ5S", "mode": "list", "cachedResultName": "Outbound System" },
+        "table": { "__rl": true, "value": "tblIaRaDlT6gGW1JM", "mode": "list", "cachedResultName": "Leads" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "Status": "Failed",
+            "Attempt": "2",
+            "Summary": "Second attempt failed - marked as Unreachable",
+            "Date Time": "={{ $now }}"
+          },
+          "matchingColumns": ["id"]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [-140, 760],
+      "id": "973bdabd-284e-475f-ba9a-eeb45ba96b34",
+      "name": "Mark as Failed",
+      "credentials": { "airtableTokenApi": { "id": "R8VJXNUf6M3mSRDd", "name": "Airtable Personal Access Token account" } }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Event = end-of-call-report", "type": "main", "index": 0 }]]
+    },
+    "Event = end-of-call-report": {
+      "main": [[{ "node": "Log Call Record", "type": "main", "index": 0 }]]
+    },
+    "Log Call Record": {
+      "main": [[{ "node": "Get Lead ID", "type": "main", "index": 0 }]]
+    },
+    "Get Lead ID": {
+      "main": [
+        [{ "node": "Condition = Answered", "type": "main", "index": 0 }],
+        [{ "node": "Condition = Unanswered", "type": "main", "index": 0 }]
+      ]
+    },
+    "Condition = Answered": {
+      "main": [[{ "node": "Mark as Called", "type": "main", "index": 0 }]]
+    },
+    "Condition = Unanswered": {
+      "main": [
+        [{ "node": "First Attempt", "type": "main", "index": 0 }],
+        [{ "node": "Mark as Failed", "type": "main", "index": 0 }]
+      ]
+    },
+    "First Attempt": {
+      "main": [[{ "node": "Mark First Attempt", "type": "main", "index": 0 }]]
+    },
+    "Mark First Attempt": {
+      "main": [[{ "node": "Wait 1 Minute", "type": "main", "index": 0 }]]
+    },
+    "Wait 1 Minute": {
+      "main": [[{ "node": "Retry Call", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "new-version-id",
+  "meta": { "templateCredsSetupCompleted": true },
+  "id": "interia-lead-system",
+  "tags": [],
+  "notes": "This workflow manages lead calls for Interia. It processes Vapi call outcomes, logs records, and retries unanswered calls once after 1 minute. The agent (Alex) qualifies leads and books appointments based on budget."
+}
